@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
-import time
 from bs4 import BeautifulSoup
+from openpyxl import load_workbook
 import pandas
 import os
 
@@ -138,20 +138,30 @@ if __name__ == "__main__":
         if app_info:
             print(app_info)
             # save it in the excel file
-            df = pandas.read_excel(filename)
-            df_new = pandas.DataFrame([app_info])
-            df = pandas.concat([df, df_new], ignore_index=True)
-            df.to_excel(filename, index=False)
+            # df = pandas.read_excel(filename)
+            # df_new = pandas.DataFrame([app_info])
+            # df = pandas.concat([df, df_new], ignore_index=True)
+            # df.to_excel(filename, index=False)
+            # use openpyxl to write to the excel file
+            wb = load_workbook(filename)
+            ws = wb.active
+            ws.append([app_info["app_id"], app_info["title"], app_info["category"], app_info["rating"], app_info["review_count"], app_info["download_count"], app_info["icon_link"], app_info["developer_email"], app_info["desc_short"], app_info["desc_long"]])
+            wb.save(filename)
             # add the app id to the processed app ids file
             with open("processed_app_ids.txt", "a") as f:
                 f.write(f"{app_id}\n")
         # if app info is None then just add the app id to the file
         else:
-            df = pandas.read_excel(filename)
-            df_new = pandas.DataFrame([{"app_id":app_id,"title": "", "category": "", "rating": "", "review_count": "", "download_count": "", "icon_link": "", "developer_email": "", "desc_short": "", "desc_long": ""}])
-            df = pandas.concat([df, df_new], ignore_index=True)
-            df.to_excel(filename, index=False)
+            # df = pandas.read_excel(filename)
+            # df_new = pandas.DataFrame([{"app_id":app_id,"title": "", "category": "", "rating": "", "review_count": "", "download_count": "", "icon_link": "", "developer_email": "", "desc_short": "", "desc_long": ""}])
+            # df = pandas.concat([df, df_new], ignore_index=True)
+            # df.to_excel(filename, index=False)
             # add the app id to the processed app ids file
+            # use openpyxl to write to the excel file
+            wb = load_workbook(filename)
+            ws = wb.active
+            ws.append([app_id, "", "", "", "", "", "", "", "", ""])
+            wb.save(filename)
             with open("processed_app_ids.txt", "a") as f:
                 f.write(f"{app_id}\n")
     browser.close()
