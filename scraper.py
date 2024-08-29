@@ -3,23 +3,22 @@ from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 import pandas
 import os
+import multiprocessing
+import time
 
 # define the base url
 base_url = "https://play.google.com/store/apps/details?id="
-# define a session for the browser
-page = None
 # open the file containing the list of app ids
 file_name = "apk_list_full.csv"
 # filename for output file
-filename = "final_data.xlsx"
+
 
 
 with open(file_name, "r") as f:
     app_ids = f.read().split("\n")
 
 
-def fetch_app_info(app_id:str) -> dict:
-    global page
+def fetch_app_info(app_id:str, page) -> dict:
     url = base_url + app_id
     page.goto(url, wait_until="domcontentloaded")
     app_info = {}
@@ -115,9 +114,8 @@ def fetch_app_info(app_id:str) -> dict:
     return app_info
 
 
-
-if __name__ == "__main__":
-    # check if there is a file with the name final_data.xlsx
+def main(app_ids, num):
+    filename = f"final_data_{num}.xlsx"
     try:
         if not os.path.exists(filename):
             df = pandas.DataFrame(columns=["app_id","title", "category", "rating", "review_count", "download_count", "icon_link", "developer_email", "desc_short", "desc_long"])
@@ -134,9 +132,8 @@ if __name__ == "__main__":
             processed_app_ids = f.read().split("\n")
         if app_id in processed_app_ids:
             continue
-        app_info = fetch_app_info(app_id)
+        app_info = fetch_app_info(app_id, page)
         if app_info:
-            print(app_info)
             # save it in the excel file
             # df = pandas.read_excel(filename)
             # df_new = pandas.DataFrame([app_info])
@@ -165,3 +162,21 @@ if __name__ == "__main__":
             with open("processed_app_ids.txt", "a") as f:
                 f.write(f"{app_id}\n")
     browser.close()
+
+def split_list(l, n):
+    k, m = divmod(len(l), n)
+    return (l[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+
+if __name__ == "__main__":
+    # open 5 chrome browsers
+    num = 5
+    app_ids_split = list(split_list(app_ids, num))
+    processes = []
+    for i in range(num):
+        p = multiprocessing.Process(target=main, args=(app_ids_split[i], i))
+        p.start()
+        processes.append(p)
+        time.sleep(5)
+    for p in processes:
+        p.join()
+    print("All processes are done")
