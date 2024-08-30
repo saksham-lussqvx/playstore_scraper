@@ -130,12 +130,14 @@ def main(app_ids, num):
             browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
+            processed_app_ids = []
+            with open("processed_app_ids.txt", "r") as f:
+                processed_app_ids = f.read().split("\n")
             for app_id in app_ids:
-                processed_app_ids = []
-                with open("processed_app_ids.txt", "r") as f:
-                    processed_app_ids = f.read().split("\n")
                 if app_id in processed_app_ids:
                     continue
+                with open("processed_app_ids.txt", "r") as f:
+                    processed_app_ids = f.read().split("\n")
                 try:
                     app_info = fetch_app_info(app_id, page)
                 except:
@@ -183,6 +185,7 @@ def main(app_ids, num):
                     # wb.save(filename)
                     with open("processed_app_ids.txt", "a") as f:
                         f.write(f"{app_id}\n")
+            print("All app ids are processed:", num)
             browser.close()
             break
         except Exception as e:
