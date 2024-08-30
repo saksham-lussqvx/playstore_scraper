@@ -5,6 +5,7 @@ import pandas
 import os
 import multiprocessing
 import time
+import json
 
 # define the base url
 base_url = "https://play.google.com/store/apps/details?id="
@@ -115,53 +116,84 @@ def fetch_app_info(app_id:str, page) -> dict:
 
 
 def main(app_ids, num):
-    filename = f"final_data_{num}.xlsx"
-    try:
-        if not os.path.exists(filename):
-            df = pandas.DataFrame(columns=["app_id","title", "category", "rating", "review_count", "download_count", "icon_link", "developer_email", "desc_short", "desc_long"])
-            df.to_excel(filename, index=False)
-    except:
-        pass
-    p = sync_playwright().start()
-    browser = p.chromium.launch(headless=False)
-    context = browser.new_context()
-    page = context.new_page()
-    for app_id in app_ids:
-        processed_app_ids = []
-        with open("processed_app_ids.txt", "r") as f:
-            processed_app_ids = f.read().split("\n")
-        if app_id in processed_app_ids:
+    while True:
+        try:
+            #filename = f"final_data_{num}.xlsx"
+            json_file = f"final_data_{num}.json"
+            # try:
+            #     if not os.path.exists(filename):
+            #         df = pandas.DataFrame(columns=["app_id","title", "category", "rating", "review_count", "download_count", "icon_link", "developer_email", "desc_short", "desc_long"])
+            #         df.to_excel(filename, index=False)
+            # except:
+            #     pass
+            p = sync_playwright().start()
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            for app_id in app_ids:
+                processed_app_ids = []
+                with open("processed_app_ids.txt", "r") as f:
+                    processed_app_ids = f.read().split("\n")
+                if app_id in processed_app_ids:
+                    continue
+                try:
+                    app_info = fetch_app_info(app_id, page)
+                except:
+                    # create a new page
+                    try:
+                        browser.close()
+                    except:
+                        pass
+                    p = sync_playwright().start()
+                    browser = p.chromium.launch(headless=True)
+                    context = browser.new_context()
+                    page = context.new_page()
+                    app_info = fetch_app_info(app_id, page)
+                if app_info:
+                    # save it in the excel file
+                    # df = pandas.read_excel(filename)
+                    # df_new = pandas.DataFrame([app_info])
+                    # df = pandas.concat([df, df_new], ignore_index=True)
+                    # df.to_excel(filename, index=False)
+                    # write this data to the json file too
+                    with open(json_file, "a", encoding="utf-8") as f:
+                        f.write(json.dumps(app_info) + "\n")
+                    # use openpyxl to write to the excel file
+                    # wb = load_workbook(filename)
+                    # ws = wb.active
+                    # ws.append([app_info["app_id"], app_info["title"], app_info["category"], app_info["rating"], app_info["review_count"], app_info["download_count"], app_info["icon_link"], app_info["developer_email"], app_info["desc_short"], app_info["desc_long"]])
+                    # wb.save(filename)
+                    # add the app id to the processed app ids file
+                    with open("processed_app_ids.txt", "a") as f:
+                        f.write(f"{app_id}\n")
+                # if app info is None then just add the app id to the file
+                else:
+                    # df = pandas.read_excel(filename)
+                    # df_new = pandas.DataFrame([{"app_id":app_id,"title": "", "category": "", "rating": "", "review_count": "", "download_count": "", "icon_link": "", "developer_email": "", "desc_short": "", "desc_long": ""}])
+                    # df = pandas.concat([df, df_new], ignore_index=True)
+                    # df.to_excel(filename, index=False)
+                    # add the app id to the processed app ids file
+                    # use openpyxl to write to the excel file
+                    # write this data to the json file too
+                    with open(json_file, "a", encoding="utf-8") as f:
+                        f.write(json.dumps({"app_id":app_id,"title": "", "category": "", "rating": "", "review_count": "", "download_count": "", "icon_link": "", "developer_email": "", "desc_short": "", "desc_long": ""}) + "\n")
+                    # wb = load_workbook(filename)
+                    # ws = wb.active
+                    # ws.append([app_id, "", "", "", "", "", "", "", "", ""])
+                    # wb.save(filename)
+                    with open("processed_app_ids.txt", "a") as f:
+                        f.write(f"{app_id}\n")
+            browser.close()
+            break
+        except Exception as e:
+            print(e)
+            try:
+                browser.close()
+                del p, browser, context, page
+            except:
+                pass
+            time.sleep(5)
             continue
-        app_info = fetch_app_info(app_id, page)
-        if app_info:
-            # save it in the excel file
-            # df = pandas.read_excel(filename)
-            # df_new = pandas.DataFrame([app_info])
-            # df = pandas.concat([df, df_new], ignore_index=True)
-            # df.to_excel(filename, index=False)
-            # use openpyxl to write to the excel file
-            wb = load_workbook(filename)
-            ws = wb.active
-            ws.append([app_info["app_id"], app_info["title"], app_info["category"], app_info["rating"], app_info["review_count"], app_info["download_count"], app_info["icon_link"], app_info["developer_email"], app_info["desc_short"], app_info["desc_long"]])
-            wb.save(filename)
-            # add the app id to the processed app ids file
-            with open("processed_app_ids.txt", "a") as f:
-                f.write(f"{app_id}\n")
-        # if app info is None then just add the app id to the file
-        else:
-            # df = pandas.read_excel(filename)
-            # df_new = pandas.DataFrame([{"app_id":app_id,"title": "", "category": "", "rating": "", "review_count": "", "download_count": "", "icon_link": "", "developer_email": "", "desc_short": "", "desc_long": ""}])
-            # df = pandas.concat([df, df_new], ignore_index=True)
-            # df.to_excel(filename, index=False)
-            # add the app id to the processed app ids file
-            # use openpyxl to write to the excel file
-            wb = load_workbook(filename)
-            ws = wb.active
-            ws.append([app_id, "", "", "", "", "", "", "", "", ""])
-            wb.save(filename)
-            with open("processed_app_ids.txt", "a") as f:
-                f.write(f"{app_id}\n")
-    browser.close()
 
 def split_list(l, n):
     k, m = divmod(len(l), n)
@@ -169,14 +201,14 @@ def split_list(l, n):
 
 if __name__ == "__main__":
     # open 5 chrome browsers
-    num = 5
+    num = 10
     app_ids_split = list(split_list(app_ids, num))
     processes = []
     for i in range(num):
         p = multiprocessing.Process(target=main, args=(app_ids_split[i], i))
         p.start()
         processes.append(p)
-        time.sleep(5)
+        time.sleep(2)
     for p in processes:
         p.join()
     print("All processes are done")
